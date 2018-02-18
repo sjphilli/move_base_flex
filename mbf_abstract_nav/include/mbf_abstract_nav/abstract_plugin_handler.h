@@ -94,8 +94,8 @@ namespace mbf_abstract_nav
       explicit AbstractPluginHandler(boost::condition_variable &_condition);
 
       /**
-       * @brief Getter of the isInit_ member field
-       * @return Value of isInit_
+       * @brief Getter of the is_init_ member field
+       * @return Value of is_init_
        */
       bool isInit() const;
 
@@ -123,7 +123,7 @@ namespace mbf_abstract_nav
       NamePluginPair plugin_;
 
       //! Map of available plugins and their types
-      NameTypeMap pluginsType_;
+      NameTypeMap plugin_types_;
 
       //! Main thread for running the plugin's specific task
       boost::thread pluginThread_;
@@ -137,14 +137,14 @@ namespace mbf_abstract_nav
   private:
 
       //!
-      bool isInit_;
+      bool is_init_;
 
 
   }; // class AbstractPluginHandler
 
   template<typename CoreType>
   AbstractPluginHandler<CoreType>::AbstractPluginHandler(boost::condition_variable &_condition) :
-    isInit_(false),
+    is_init_(false),
     condition_(_condition)
   {
 
@@ -189,15 +189,15 @@ namespace mbf_abstract_nav
         CoreTypePtr plugin_ptr = loadPlugin(type);
         if(plugin_ptr && initPlugin(name, plugin_ptr))
         {
-          // set default controller to the first in the list
+          // set default plugin to the first in the list
           if(!plugin_.second)
           {
             plugin_.second = plugin_ptr;
             plugin_.first = name;
-            isInit_ = true;
+            is_init_ = true;
           }
           plugins_.insert(NamePluginPair(name, plugin_ptr));
-          pluginsType_.insert(NameTypePair(name, type));
+          plugin_types_.insert(NameTypePair(name, type));
 
           ROS_INFO_STREAM("The " << _class << " with the type \"" << type << "\" has been loaded and initialized"
                                  << " successfully under the name \"" << name << "\".");
@@ -216,13 +216,13 @@ namespace mbf_abstract_nav
       ROS_ERROR_STREAM(ex.getMessage());
       return false;
     }
-    return (0 == plugin_.second);
+    return is_init_;
   }
 
   template<typename CoreType>
   bool AbstractPluginHandler<CoreType>::switchPlugins(const std::string &_name)
   {
-    if(!isInit_)
+    if(!is_init_)
     {
       ROS_WARN_NAMED("AbstractPluginHandler::switchPlugins", "Uninitialized usage");
       return false;
@@ -230,7 +230,7 @@ namespace mbf_abstract_nav
     if(_name == plugin_.first)
     {
       ROS_DEBUG_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
-                             "No controller switch necessary, \"" << _name << "\" already set");
+                             "No plugin switch necessary, \"" << _name << "\" already set");
     }
     // change the plugin
     typename NamePluginMap::iterator newPlugin = plugins_.find(_name);
@@ -241,8 +241,8 @@ namespace mbf_abstract_nav
       plugin_ = std::make_pair(newPlugin->first, newPlugin->second);
 
       // find the type for debugging
-      typename NameTypeMap::iterator newType = pluginsType_.find(_name);
-      if(newType == pluginsType_.end())
+      typename NameTypeMap::iterator new_type = plugin_types_.find(_name);
+      if(new_type == plugin_types_.end())
       {
         ROS_WARN_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
                               "The plugin with the name \"" << _name << "\" has an unknown type");
@@ -251,7 +251,7 @@ namespace mbf_abstract_nav
       {
       ROS_INFO_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
                             "Switched to plugin \"" << plugin_.first << "\" with the type \""
-                                                    << newType->second << "\"");
+                                                    << new_type->second << "\"");
       }
       return true;
     }
@@ -264,7 +264,7 @@ namespace mbf_abstract_nav
   template<typename CoreType>
   bool AbstractPluginHandler<CoreType>::isInit() const
   {
-    return isInit_;
+    return is_init_;
   }
 
   template<typename CoreType>

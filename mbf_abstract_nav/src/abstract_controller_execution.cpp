@@ -78,8 +78,7 @@ namespace mbf_abstract_nav
 
   bool AbstractControllerExecution::initialize()
   {
-    static const std::string pluginClass = "controller";
-    if(loadPlugins(pluginClass))
+    if(loadPlugins("controllers"))
     {
       setState(INITIALIZED);
       return true;
