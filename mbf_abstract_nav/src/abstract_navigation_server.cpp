@@ -39,6 +39,7 @@
  */
 
 #include <nav_msgs/Path.h>
+
 #include "mbf_abstract_nav/abstract_navigation_server.h"
 
 namespace mbf_abstract_nav
@@ -246,7 +247,7 @@ void AbstractNavigationServer::callActionGetPath(
   // Try to switch the planner if a special planner is specified in the action goal.
   if(!goal->planner.empty()){
 
-    if(planning_ptr_->switchPlanner(goal->planner))
+    if(planning_ptr_->switchPlugins(goal->planner))
     {
       ROS_INFO_STREAM("Using the planner \"" << goal->planner << "\".");
     }
@@ -794,7 +795,7 @@ void AbstractNavigationServer::callActionMoveBase(
     return;
   }
 
-  if(!goal->planner.empty() && !planning_ptr_->switchPlanner(goal->planner))
+  if(!goal->planner.empty() && !planning_ptr_->switchPlugins(goal->planner))
   {
     std::stringstream ss;
     ss << "No planner with the name \"" << goal->planner << "\" loaded! ";

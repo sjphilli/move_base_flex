@@ -126,7 +126,7 @@ namespace mbf_abstract_nav
       NameTypeMap plugin_types_;
 
       //! Main thread for running the plugin's specific task
-      boost::thread pluginThread_;
+      boost::thread plugin_thread_;
 
       //! Mutex to avoid concurrent access to the plugin
       boost::mutex pluginMutex_;
@@ -136,7 +136,7 @@ namespace mbf_abstract_nav
 
   private:
 
-      //!
+      //! At least one plugin has been successfully loaded and initialized
       bool is_init_;
 
 
@@ -163,8 +163,8 @@ namespace mbf_abstract_nav
     XmlRpc::XmlRpcValue plugin_param_list;
     if(!private_nh.getParam(_class, plugin_param_list))
     {
-      ROS_WARN_STREAM("No plugins configured! - Use the param"
-                        << _class << "which must be a list of tuples with a name and a type.");
+      ROS_WARN_STREAM("No plugins configured! - Use the param "
+                      << _class << " which must be a list of tuples with a name and a type");
       return false;
     }
 
@@ -180,8 +180,7 @@ namespace mbf_abstract_nav
         // reject the plugin if its name is not unique
         if(plugins_.find(name) != plugins_.end())
         {
-          ROS_ERROR_STREAM("The " << _class << " \"" << name
-                                  << "\" has already been loaded! Names must be unique!");
+          ROS_ERROR_STREAM("" << _class << ": plugin \"" << name << "\" already loaded! Names must be unique!");
           return false;
         }
 
@@ -199,13 +198,12 @@ namespace mbf_abstract_nav
           plugins_.insert(NamePluginPair(name, plugin_ptr));
           plugin_types_.insert(NameTypePair(name, type));
 
-          ROS_INFO_STREAM("The " << _class << " with the type \"" << type << "\" has been loaded and initialized"
-                                 << " successfully under the name \"" << name << "\".");
+          ROS_INFO_STREAM("" << _class << ": plugin of type \"" << type << "\" loaded with name \"" << name << "\"");
         }
         else
         {
-          ROS_ERROR_STREAM("Could not load and initialize the " << _class << " with the name \""
-                                                                << name << "\" and the type \"" << type << "\"!");
+          ROS_ERROR_STREAM("" << _class << ": Load plugin of type \"" << type << "\" with name \"" << name
+                           << "\" failed!");
         }
       }
     }
@@ -230,28 +228,28 @@ namespace mbf_abstract_nav
     if(_name == plugin_.first)
     {
       ROS_DEBUG_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
-                             "No plugin switch necessary, \"" << _name << "\" already set");
+                             "No plugin switch necessary; \"" << _name << "\" already set");
+      return true;
     }
     // change the plugin
-    typename NamePluginMap::iterator newPlugin = plugins_.find(_name);
-    if(newPlugin != plugins_.end())
+    typename NamePluginMap::iterator new_plugin = plugins_.find(_name);
+    if(new_plugin != plugins_.end())
     {
-      // lock the guard, since the pluginThread_ is using the plugin
+      // lock the guard, since the plugin thread is using the plugin
       boost::lock_guard<boost::mutex> lg(pluginMutex_);
-      plugin_ = std::make_pair(newPlugin->first, newPlugin->second);
+      plugin_ = std::make_pair(new_plugin->first, new_plugin->second);
 
       // find the type for debugging
       typename NameTypeMap::iterator new_type = plugin_types_.find(_name);
       if(new_type == plugin_types_.end())
       {
         ROS_WARN_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
-                              "The plugin with the name \"" << _name << "\" has an unknown type");
+                              "The plugin \"" << _name << "\" has an unknown type");
       }
       else
       {
-      ROS_INFO_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
-                            "Switched to plugin \"" << plugin_.first << "\" with the type \""
-                                                    << new_type->second << "\"");
+        ROS_INFO_STREAM_NAMED("AbstractPluginHandler::switchPlugins",
+                              "Switched to plugin \"" << plugin_.first << "\" of type \"" << new_type->second << "\"");
       }
       return true;
     }

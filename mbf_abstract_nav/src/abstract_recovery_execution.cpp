@@ -38,10 +38,9 @@
  *
  */
 
-#include <XmlRpcException.h>
 #include <boost/exception/diagnostic_information.hpp>
 
-#include <mbf_abstract_nav/abstract_recovery_execution.h>
+#include "mbf_abstract_nav/abstract_recovery_execution.h"
 
 namespace mbf_abstract_nav
 {
@@ -50,7 +49,8 @@ namespace mbf_abstract_nav
   AbstractRecoveryExecution::AbstractRecoveryExecution(
       boost::condition_variable &condition,
       const boost::shared_ptr<tf::TransformListener> &tf_listener_ptr) :
-      condition_(condition), tf_listener_ptr_(tf_listener_ptr), state_(STOPPED), canceled_(false)
+      tf_listener_ptr_(tf_listener_ptr), state_(STOPPED), canceled_(false),
+      AbstractPluginHandler<mbf_abstract_core::AbstractRecovery>(condition)
   {
   }
 
@@ -61,7 +61,12 @@ namespace mbf_abstract_nav
 
   bool AbstractRecoveryExecution::initialize()
   {
-    return loadPlugins();
+    if(loadPlugins("recovery_behaviors"))
+    {
+      setState(INITIALIZED);
+      return true;
+    }
+    return false;
   }
 
 
@@ -70,65 +75,6 @@ namespace mbf_abstract_nav
     boost::recursive_mutex::scoped_lock sl(configuration_mutex_);
 
     // Nothing to do here, as recovery_enabled is loaded and used in the navigation server
-  }
-
-
-  bool AbstractRecoveryExecution::loadPlugins()
-  {
-    ros::NodeHandle private_nh("~");
-
-    XmlRpc::XmlRpcValue recovery_behaviors_param_list;
-    if(!private_nh.getParam("recovery_behaviors", recovery_behaviors_param_list))
-    {
-      ROS_WARN_STREAM("No recovery bahaviors configured! - Use the param \"recovery_behaviors\", which must be a list of tuples with a name and a type.");
-      return true;
-    }
-
-    try
-    {
-      for (int i = 0; i < recovery_behaviors_param_list.size(); i++)
-      {
-        XmlRpc::XmlRpcValue elem = recovery_behaviors_param_list[i];
-
-        std::string name = elem["name"];
-        std::string type = elem["type"];
-
-        if (recovery_behaviors_.find(name) != recovery_behaviors_.end())
-        {
-          ROS_ERROR_STREAM("The recovery behavior \"" << name << "\" has already been loaded! Names must be unique!");
-          return false;
-        }
-        mbf_abstract_core::AbstractRecovery::Ptr recovery_ptr = loadRecoveryPlugin(type);
-        if(recovery_ptr && initPlugin(name, recovery_ptr))
-        {
-          if(!current_behavior_)
-          {
-            current_behavior_ = recovery_ptr;
-            setState(INITIALIZED);
-          }
-          recovery_behaviors_.insert(
-              std::pair<std::string, mbf_abstract_core::AbstractRecovery::Ptr>(name, recovery_ptr));
-
-          recovery_behaviors_type_.insert(std::pair<std::string, std::string>(name, type)); // save name to type mapping
-
-          ROS_INFO_STREAM("The recovery behavior \"" << type << "\" has been loaded successfully under the name \""
-                          << name << "\".");
-        }
-        else
-        {
-          ROS_ERROR_STREAM("Could not load the plugin with the name \"" << name << "\" and the type \"" << type << "\"!");
-        }
-      }
-    }
-    catch (XmlRpc::XmlRpcException &e)
-    {
-      ROS_ERROR_STREAM("Invalid parameter structure. The recovery_behaviors parameter has to be a list of structs "
-                       << "with fields \"name\" and \"type\" of the recovery behavior!");
-      ROS_ERROR_STREAM(e.getMessage());
-      return false;
-    }
-    // Is there any recovery behavior initialized?
-    return current_behavior_ ? true : false;
   }
 
 
@@ -150,13 +96,13 @@ namespace mbf_abstract_nav
   {
     requested_behavior_name_ = name;
     setState(STARTED);
-    thread_ = boost::thread(&AbstractRecoveryExecution::run, this);
+    plugin_thread_ = boost::thread(&AbstractRecoveryExecution::run, this);
   }
 
 
   void AbstractRecoveryExecution::stopRecovery()
   {
-    thread_.interrupt();
+    plugin_thread_.interrupt();
     setState(STOPPED);
   }
 
@@ -164,10 +110,10 @@ namespace mbf_abstract_nav
   bool AbstractRecoveryExecution::cancel()
   {
     canceled_ = true;
-    if (current_behavior_)
+    if (plugin_.second)
     {
       // returns false if cancel is not implemented or rejected by the recovery behavior (will run until completion)
-      return current_behavior_->cancel();
+      return plugin_.second->cancel();
     }
     return false;
   }
@@ -175,15 +121,14 @@ namespace mbf_abstract_nav
 
   bool AbstractRecoveryExecution::hasRecoveryBehavior(const std::string &name)
   {
-    return recovery_behaviors_.find(name) != recovery_behaviors_.end();
+    return plugins_.find(name) != plugins_.end();
   }
 
 
   std::vector<std::string> AbstractRecoveryExecution::listRecoveryBehaviors()
   {
     std::vector<std::string> recovery_behaviors;
-    std::map<std::string, std::string>::iterator it = recovery_behaviors_type_.begin();
-    for (; it != recovery_behaviors_type_.end(); ++it)
+    for (NameTypeMap::iterator it = plugin_types_.begin(); it != plugin_types_.end(); ++it)
     {
       recovery_behaviors.push_back(it->first);
     }
@@ -193,8 +138,8 @@ namespace mbf_abstract_nav
 
   bool AbstractRecoveryExecution::getTypeOfBehavior(const std::string &name, std::string &type)
   {
-    std::map<std::string, std::string>::iterator finder = recovery_behaviors_type_.find(name);
-    if (finder != recovery_behaviors_type_.end())
+    NameTypeMap::iterator finder = plugin_types_.find(name);
+    if (finder != plugin_types_.end())
     {
       type = finder->second;
       return true;
@@ -208,10 +153,9 @@ namespace mbf_abstract_nav
     boost::recursive_mutex::scoped_lock sl(configuration_mutex_);
     canceled_ = false; // (re)set the canceled state
 
-    typename std::map<std::string, boost::shared_ptr<mbf_abstract_core::AbstractRecovery> >::iterator find_iter;
-    find_iter = recovery_behaviors_.find(requested_behavior_name_);
+    NamePluginMap::iterator find_iter = plugins_.find(requested_behavior_name_);
 
-    if (find_iter == recovery_behaviors_.end())
+    if (find_iter == plugins_.end())
     {
       // no such recovery behavior
       ROS_ERROR_STREAM("No recovery behavior for the given name: \"" << requested_behavior_name_ << "\"!");
@@ -220,13 +164,13 @@ namespace mbf_abstract_nav
       return;
     }
 
-    current_behavior_ = find_iter->second;
+    plugin_ = *find_iter;
     setState(RECOVERING);
     try
     {
       // TODO use outcome and message
       std::string message;
-      uint32_t outcome = current_behavior_->runBehavior(message);
+      uint32_t outcome = plugin_.second->runBehavior(message);
       if (canceled_)
       {
         setState(CANCELED);
@@ -245,6 +189,6 @@ namespace mbf_abstract_nav
       setState(INTERNAL_ERROR);
     }
     condition_.notify_one();
-    current_behavior_.reset();
+    plugin_.second.reset();
   }
 } /* namespace mbf_abstract_nav */

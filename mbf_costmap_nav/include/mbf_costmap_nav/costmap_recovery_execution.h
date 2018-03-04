@@ -82,7 +82,7 @@ protected:
 
   //! Shared pointer to the global costmap
   CostmapPtr &global_costmap_;
-  
+
   //! Shared pointer to thr local costmap
   CostmapPtr &local_costmap_;
 
@@ -94,16 +94,14 @@ private:
    * @param behavior_ptr pointer to the recovery behavior object which corresponds to the name param
    * @return true if init succeeded, false otherwise
    */
-  virtual bool initPlugin(
-      const std::string& name,
-      const mbf_abstract_core::AbstractRecovery::Ptr& behavior_ptr);
+  virtual bool initPlugin(const std::string &name, const mbf_abstract_core::AbstractRecovery::Ptr &behavior_ptr);
 
   /**
    * @brief Loads a Recovery plugin associated with given recovery type parameter
    * @param recovery_name The name of the Recovery plugin
    * @return A shared pointer to a Recovery plugin, if the plugin was loaded successfully, an empty pointer otherwise.
    */
-  virtual mbf_abstract_core::AbstractRecovery::Ptr loadRecoveryPlugin(const std::string& recovery_type);
+  virtual mbf_abstract_core::AbstractRecovery::Ptr loadPlugin(const std::string &recovery_type);
 };
 
 } /* namespace mbf_costmap_nav */

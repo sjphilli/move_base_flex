@@ -38,10 +38,10 @@
  *
  */
 
-#include "mbf_abstract_nav/abstract_controller_execution.h"
-#include <xmlrpcpp/XmlRpcException.h>
 #include <mbf_msgs/ExePathResult.h>
 #include <boost/exception/diagnostic_information.hpp>
+
+#include "mbf_abstract_nav/abstract_controller_execution.h"
 
 namespace mbf_abstract_nav
 {
@@ -115,14 +115,14 @@ namespace mbf_abstract_nav
     outcome_ = 255;
     message_ = "";
     moving_ = true;
-    pluginThread_ = boost::thread(&AbstractControllerExecution::run, this);
+    plugin_thread_ = boost::thread(&AbstractControllerExecution::run, this);
     return true;
   }
 
 
   void AbstractControllerExecution::stopMoving()
   {
-    pluginThread_.interrupt();
+    plugin_thread_.interrupt();
   }
 
 

@@ -54,7 +54,7 @@ CostmapPlannerExecution::~CostmapPlannerExecution()
 {
 }
 
-mbf_abstract_core::AbstractPlanner::Ptr CostmapPlannerExecution::loadPlannerPlugin(const std::string& planner_type)
+mbf_abstract_core::AbstractPlanner::Ptr CostmapPlannerExecution::loadPlugin(const std::string &planner_type)
 {
   static pluginlib::ClassLoader<mbf_costmap_core::CostmapPlanner>
       class_loader("mbf_costmap_core", "mbf_costmap_core::CostmapPlanner");
@@ -92,9 +92,8 @@ mbf_abstract_core::AbstractPlanner::Ptr CostmapPlannerExecution::loadPlannerPlug
   return planner_ptr;
 }
 
-bool CostmapPlannerExecution::initPlugin(
-    const std::string& name,
-    const mbf_abstract_core::AbstractPlanner::Ptr& planner_ptr
+bool CostmapPlannerExecution::initPlugin(const std::string &name,
+                                         const mbf_abstract_core::AbstractPlanner::Ptr &planner_ptr
 )
 {
   mbf_costmap_core::CostmapPlanner::Ptr costmap_planner_ptr
@@ -113,8 +112,8 @@ bool CostmapPlannerExecution::initPlugin(
 }
 
 uint32_t CostmapPlannerExecution::makePlan(const mbf_abstract_core::AbstractPlanner::Ptr &planner_ptr,
-                                           const geometry_msgs::PoseStamped start,
-                                           const geometry_msgs::PoseStamped goal,
+                                           const geometry_msgs::PoseStamped &start,
+                                           const geometry_msgs::PoseStamped &goal,
                                            double tolerance,
                                            std::vector<geometry_msgs::PoseStamped> &plan,
                                            double &cost,

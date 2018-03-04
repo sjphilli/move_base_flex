@@ -70,7 +70,7 @@ namespace mbf_abstract_nav
  */
 
 /**
- * @brief The AbstractControllerExecution class loads and binds the local planner plugin. It contains a thread
+ * @brief The AbstractControllerExecution class loads and binds the local planner plugins. It contains a thread
  *        running the plugin in a cycle to move the robot. An internal state is saved and will be pulled by server,
  *        which controls the local planner execution. Due to a state change it wakes up all threads connected to the
  *        condition variable.
@@ -81,7 +81,7 @@ namespace mbf_abstract_nav
   {
   public:
 
-    typedef boost::shared_ptr<AbstractControllerExecution > Ptr;
+    typedef boost::shared_ptr<AbstractControllerExecution> Ptr;
 
     /**
      * @brief Constructor

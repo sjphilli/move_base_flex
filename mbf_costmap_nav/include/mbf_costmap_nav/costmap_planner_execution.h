@@ -77,7 +77,7 @@ private:
    * @param planner_type The type of the planner plugin to load.
    * @return true, if the local planner plugin was successfully loaded.
    */
-  virtual mbf_abstract_core::AbstractPlanner::Ptr loadPlannerPlugin(const std::string& planner_type);
+  virtual mbf_abstract_core::AbstractPlanner::Ptr loadPlugin(const std::string &planner_type);
 
   /**
    * @brief Initializes the controller plugin with its name and pointer to the costmap
@@ -85,10 +85,7 @@ private:
    * @param planner_ptr pointer to the planner object which corresponds to the name param
    * @return true if init succeeded, false otherwise
    */
-  virtual bool initPlugin(
-      const std::string& name,
-      const mbf_abstract_core::AbstractPlanner::Ptr& planner_ptr
-  );
+  virtual bool initPlugin(const std::string &name, const mbf_abstract_core::AbstractPlanner::Ptr &planner_ptr);
 
   /**
    * @brief calls the planner plugin to make a plan from the start pose to the goal pose with the given tolerance,
@@ -103,8 +100,8 @@ private:
    */
   virtual uint32_t makePlan(
       const mbf_abstract_core::AbstractPlanner::Ptr& planner_ptr,
-      const geometry_msgs::PoseStamped start,
-      const geometry_msgs::PoseStamped goal,
+      const geometry_msgs::PoseStamped &start,
+      const geometry_msgs::PoseStamped &goal,
       double tolerance,
       std::vector<geometry_msgs::PoseStamped> &plan,
       double &cost,

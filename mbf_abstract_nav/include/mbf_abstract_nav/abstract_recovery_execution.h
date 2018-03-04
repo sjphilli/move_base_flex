@@ -56,6 +56,7 @@
 #include <mbf_utility/navigation_utility.h>
 
 #include "mbf_abstract_nav/MoveBaseFlexConfig.h"
+#include "mbf_abstract_nav/abstract_plugin_handler.h"
 
 namespace mbf_abstract_nav
 {
@@ -66,18 +67,21 @@ namespace mbf_abstract_nav
  */
 
 /**
- * @brief The AbstractRecoveryExecution class loads and binds the recovery behavior plugin. It contains a thread
+ * @brief The AbstractRecoveryExecution class loads and binds the recovery behavior plugins. It contains a thread
  *        running the plugin, executing the recovery behavior. An internal state is saved and will be pulled by the
  *        server, which controls the recovery behavior execution. Due to a state change it wakes up all threads
  *        connected to the condition variable.
+ *        As the other abstract execution classes, extends AbstractPluginHandler to load and handle plugins, but
+ *        with private inheritance to prevent external calls to switchPlugins, as there's no permanent current plugin,
+ *        just the one running, if any.
  *
  * @ingroup abstract_server recovery_execution
  */
-  class AbstractRecoveryExecution
+  class AbstractRecoveryExecution : private AbstractPluginHandler<mbf_abstract_core::AbstractRecovery>
   {
   public:
 
-    typedef boost::shared_ptr<AbstractRecoveryExecution > Ptr;
+    typedef boost::shared_ptr<AbstractRecoveryExecution> Ptr;
 
     /**
      * @brief Constructor
@@ -171,15 +175,6 @@ namespace mbf_abstract_nav
      */
     virtual void run();
 
-    //! map to store the recovery behaviors. Each behavior can be accessed by its corresponding name
-    std::map<std::string, boost::shared_ptr<mbf_abstract_core::AbstractRecovery> > recovery_behaviors_;
-
-    //! map to store the type of the behavior as string
-    std::map<std::string, std::string> recovery_behaviors_type_;
-
-    //! the current loaded recovery behavior
-    mbf_abstract_core::AbstractRecovery::Ptr current_behavior_;
-
     //! shared pointer to common TransformListener
     const boost::shared_ptr<tf::TransformListener> tf_listener_ptr_;
 
@@ -191,42 +186,11 @@ namespace mbf_abstract_nav
      */
     void setState(RecoveryState state);
 
-    /**
-     * @brief Pure virtual method, the derived class has to implement. Depending on the plugin base class,
-     *        some plugins need to be initialized!
-     * @param name The name of the recovery behavior
-     * @param behavior_ptr pointer to the recovery behavior object which corresponds to the name param
-     * @return true if init succeeded, false otherwise
-     */
-    virtual bool initPlugin(
-        const std::string& name,
-        const mbf_abstract_core::AbstractRecovery::Ptr& behavior_ptr
-    ) = 0;
-
-    /**
-     * @brief Loads a Recovery plugin associated with given recovery type parameter
-     * @param recovery_name The name of the Recovery plugin
-     * @return A shared pointer to a Recovery plugin, if the plugin was loaded successfully, an empty pointer otherwise.
-     */
-    virtual mbf_abstract_core::AbstractRecovery::Ptr loadRecoveryPlugin(const std::string& recovery_type) = 0;
-
-    /**
-     * @brief Loads the plugins defined in the parameter server
-     * @return true, if all recovery behavior have been loaded successfully.
-     */
-    bool loadPlugins();
-
     //! mutex to handle safe thread communication for the current state
     boost::mutex state_mtx_;
 
     //! the last requested recovery behavior to start
     std::string requested_behavior_name_;
-
-    //! condition variable to wake up control thread
-    boost::condition_variable &condition_;
-
-    //! thread for running recovery behaviors
-    boost::thread thread_;
 
     //! current internal state
     RecoveryState state_;

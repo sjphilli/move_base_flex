@@ -57,8 +57,7 @@ CostmapRecoveryExecution::~CostmapRecoveryExecution()
 {
 }
 
-mbf_abstract_core::AbstractRecovery::Ptr CostmapRecoveryExecution::loadRecoveryPlugin(
-    const std::string& recovery_type)
+mbf_abstract_core::AbstractRecovery::Ptr CostmapRecoveryExecution::loadPlugin(const std::string &recovery_type)
 {
   static pluginlib::ClassLoader<mbf_costmap_core::CostmapRecovery>
       class_loader("mbf_costmap_core", "mbf_costmap_core::CostmapRecovery");
@@ -95,7 +94,7 @@ mbf_abstract_core::AbstractRecovery::Ptr CostmapRecoveryExecution::loadRecoveryP
 }
 
 bool CostmapRecoveryExecution::initPlugin(
-    const std::string& name,
+    const std::string &name,
     const mbf_abstract_core::AbstractRecovery::Ptr& behavior_ptr)
 {
   mbf_costmap_core::CostmapRecovery::Ptr behavior =
